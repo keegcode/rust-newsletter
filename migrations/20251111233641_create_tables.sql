@@ -1,0 +1,22 @@
+CREATE TABLE users (
+    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    email       TEXT UNIQUE NOT NULL,
+    created_at  TIMESTAMP DEFAULT NOW() NOT NULL,
+    verified_at TIMESTAMP
+);
+
+CREATE TABLE topics (
+    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name        TEXT UNIQUE NOT NULL,
+    user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    template    TEXT,
+    created_at  TIMESTAMP DEFAULT NOW() NOT NULL
+);
+
+CREATE TABLE subscriptions (
+    topic_id BIGINT NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+    user_id  BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    active   BOOLEAN NOT NULL DEFAULT TRUE,
+    PRIMARY KEY (topic_id, user_id)
+);
+
