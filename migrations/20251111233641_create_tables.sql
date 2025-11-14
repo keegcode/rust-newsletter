@@ -19,4 +19,3 @@ CREATE TABLE subscriptions (
     active   BOOLEAN NOT NULL DEFAULT TRUE,
     PRIMARY KEY (topic_id, user_id)
 );
-

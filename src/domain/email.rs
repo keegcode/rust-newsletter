@@ -4,7 +4,7 @@ use std::error;
 use std::fmt;
 
 #[derive(Debug)]
-pub struct Email(String);
+pub struct Email(pub String);
 
 impl Email {
     const REGEX: &str = r"\A[a-z0-9!#$%&'*+\/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+\/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\z";

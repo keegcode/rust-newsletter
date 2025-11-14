@@ -1,8 +1,10 @@
+pub mod create_topic;
 pub mod health_check;
 pub mod login;
 pub mod request_otp;
 pub mod subscribe;
 
+use create_topic::create_topic;
 use health_check::health_check;
 use login::login;
 use request_otp::request_otp;
@@ -21,7 +23,7 @@ pub fn routes() -> Router<ApiState> {
         .route("/api/health", get(health_check))
         .route("/api/auth/login", post(login))
         .route("/api/auth/request-otp", post(request_otp))
-        //.route("/api/topics", post(create_topic))
+        .route("/api/topics", post(create_topic))
         //.route("/api/topics", get(list_topics))
         //.route("/api/topics/{topic}", put(update_topic))
         //.route("/api/topics/{topic}", delete(delete_topic))

@@ -13,14 +13,20 @@ pub struct LoginRequest {
 }
 
 pub async fn login(
-    extract::Json(payload): Json<LoginRequest>,
     extract::State(state): State<ApiState>,
-) {
-    let user = UserEntity::get_by_email(&state, &payload.email)
-        .await
-        .unwrap();
+    extract::Json(payload): Json<LoginRequest>,
+) -> &'static str {
+    match UserEntity::get_by_email(&state, &payload.email).await {
+        Ok(user) => {
+            let otp = Otp::new(&user.id.to_string()).unwrap();
 
-    let otp = Otp::new(payload.email.into());
-
-    if otp != payload.otp {}
+            if !otp.eq(&payload.otp) {
+                "Invalid OTP"
+            } else {
+                "OK"
+            }
+        }
+        Err(sqlx::Error::RowNotFound) => "Invalid OTP",
+        Err(_) => "Internal Server Error",
+    }
 }

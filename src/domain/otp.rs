@@ -12,6 +12,12 @@ type HmacSha1 = Hmac<Sha1>;
 #[derive(Debug)]
 pub struct Otp(String);
 
+impl PartialEq for Otp {
+    fn eq(&self, other: &Otp) -> bool {
+        self.0.eq(&other.0)
+    }
+}
+
 impl Otp {
     pub fn new(key: &str) -> Result<Self, std::io::Error> {
         let mut hash = HmacSha1::new_from_slice(CONFIG.otp.secret.as_bytes()).map_err(|e| {
@@ -49,12 +55,12 @@ impl Otp {
     pub fn parse(otp: &str) -> Result<Self, InvalidOtpError> {
         let otp_size: usize = usize::try_from(CONFIG.otp.size).unwrap_or_default();
 
-        match otp.len() != otp_size {
-            false => Err(InvalidOtpError(otp.into())),
+        match otp.len() == otp_size {
             true => match otp.parse() {
                 Ok(v) => Ok(Self(v)),
                 Err(_) => Err(InvalidOtpError(otp.into())),
             },
+            false => Err(InvalidOtpError(otp.into())),
         }
     }
 }
