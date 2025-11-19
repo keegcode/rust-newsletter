@@ -9,7 +9,7 @@ CREATE TABLE topics (
     id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name        TEXT UNIQUE NOT NULL,
     user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    template    TEXT,
+    template    TEXT NOT NULL,
     created_at  TIMESTAMP DEFAULT NOW() NOT NULL
 );
 

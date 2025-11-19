@@ -1,13 +1,9 @@
-use std::{
-    env,
-    fs::File,
-    io::{BufRead, BufReader},
-    num::ParseIntError,
-    path::PathBuf,
-    sync::LazyLock,
-};
+use std::{num::ParseIntError, sync::LazyLock};
 
-pub static CONFIG: LazyLock<Config> = LazyLock::new(|| Config::from_env().unwrap());
+pub static CONFIG: LazyLock<Config> = LazyLock::new(|| {
+    dotenvy::dotenv().unwrap();
+    Config::from_env().unwrap()
+});
 
 #[derive(Debug)]
 pub struct DbConfig {
@@ -27,41 +23,31 @@ pub struct OtpConfig {
 }
 
 #[derive(Debug)]
+pub struct RedisConfig {
+    pub password: String,
+}
+
+#[derive(Debug)]
 pub struct Config {
     pub db: DbConfig,
     pub port: u32,
     pub otp: OtpConfig,
+    pub redis: RedisConfig,
 }
 
-fn parse_port(port: &str) -> Result<u32, std::io::Error> {
-    Ok(port.parse().map_err(|e: ParseIntError| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            format!("Can't parse port: {}", e.to_string()),
-        )
-    })?)
+#[derive(Debug, Clone)]
+pub enum ConfigError {
+    ParseIntError(ParseIntError),
 }
 
-fn parse_otp_ttl_sec(ttl: &str) -> Result<u32, std::io::Error> {
-    Ok(ttl.parse().map_err(|e: ParseIntError| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            format!("Can't parse otp ttl: {}", e.to_string()),
-        )
-    })?)
-}
-
-fn parse_otp_size(size: &str) -> Result<u32, std::io::Error> {
-    Ok(size.parse().map_err(|e: ParseIntError| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            format!("Can't parse otp size: {}", e.to_string()),
-        )
-    })?)
+impl From<ParseIntError> for ConfigError {
+    fn from(value: ParseIntError) -> Self {
+        Self::ParseIntError(value)
+    }
 }
 
 impl Config {
-    pub fn from_env() -> Result<Config, std::io::Error> {
+    pub fn from_env() -> Result<Config, ConfigError> {
         let mut db_user = String::default();
         let mut db_password = String::default();
         let mut db_database = String::default();
@@ -74,35 +60,20 @@ impl Config {
 
         let mut port = 3000;
 
-        let current_dir = env::current_dir()?;
-        let filename = ".env";
+        let mut redis_password = String::default();
 
-        let mut path = PathBuf::from(current_dir);
-        path.push(filename);
-
-        let f = File::open(path)?;
-        let f = BufReader::new(f);
-
-        for line in f.lines() {
-            let l = String::from(line?);
-            let s: Vec<&str> = l.split("=").collect();
-
-            if s.len() < 2 {
-                continue;
-            }
-
-            let (k, v) = (s[0], s[1]);
-
-            match k {
-                "DB_USER" => db_user = v.into(),
-                "DB_PASSWORD" => db_password = v.into(),
-                "DB_DATABASE" => db_database = v.into(),
-                "DB_HOST" => db_host = v.into(),
-                "DB_PORT" => db_port = parse_port(v)?,
-                "OTP_SECRET" => otp_secret = v.into(),
-                "OTP_TTL_SEC" => otp_ttl_sec = parse_otp_ttl_sec(v)?,
-                "OTP_SIZE" => otp_size = parse_otp_size(v)?,
-                "PORT" => port = parse_port(v)?,
+        for (k, v) in std::env::vars() {
+            match k.as_str() {
+                "DB_USER" => db_user = v,
+                "DB_PASSWORD" => db_password = v,
+                "DB_DATABASE" => db_database = v,
+                "DB_HOST" => db_host = v,
+                "DB_PORT" => db_port = v.parse()?,
+                "OTP_SECRET" => otp_secret = v,
+                "OTP_TTL_SEC" => otp_ttl_sec = v.parse()?,
+                "OTP_SIZE" => otp_size = v.parse()?,
+                "PORT" => port = v.parse()?,
+                "REDIS_PASSWORD" => redis_password = v,
                 _ => (),
             };
         }
@@ -127,10 +98,15 @@ impl Config {
             uri: db_uri,
         };
 
+        let redis_config = RedisConfig {
+            password: redis_password,
+        };
+
         Ok(Config {
-            port: port,
+            port,
             db: db_config,
             otp: otp_config,
+            redis: redis_config,
         })
     }
 }

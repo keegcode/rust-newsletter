@@ -1,1 +1,1 @@
-watchexec -e rs -r cargo run
+watchexec -e rs -r "cargo clippy && cargo test && cargo run"

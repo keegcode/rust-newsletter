@@ -5,6 +5,7 @@ use sha1::Sha1;
 use std::error;
 use std::fmt;
 
+use crate::api::ApiError;
 use crate::config::CONFIG;
 
 type HmacSha1 = Hmac<Sha1>;
@@ -19,22 +20,13 @@ impl PartialEq for Otp {
 }
 
 impl Otp {
-    pub fn new(key: &str) -> Result<Self, std::io::Error> {
-        let mut hash = HmacSha1::new_from_slice(CONFIG.otp.secret.as_bytes()).map_err(|e| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Failed to generate hash: {}", e),
-            )
-        })?;
+    pub fn new(key: &str) -> Result<Self, ApiError> {
+        let mut hash = HmacSha1::new_from_slice(CONFIG.otp.secret.as_bytes())
+            .map_err(|e| ApiError::Internal(format!("Failed to generate hash: {}", e)))?;
 
         let now = std::time::UNIX_EPOCH
             .elapsed()
-            .map_err(|e| {
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!("Failed to get unix time: {}", e),
-                )
-            })?
+            .map_err(|e| ApiError::Internal(format!("Failed to get unix time: {}", e)))?
             .as_secs();
 
         let ttl: u64 = CONFIG.otp.ttl_sec.into();
@@ -47,21 +39,20 @@ impl Otp {
         let bytes = hash.finalize().into_bytes();
         let bytes: [u8; 4] = [bytes[0], bytes[1], bytes[2], bytes[3]];
         let n = u32::from_ne_bytes(bytes);
-        let n = n % (10 as u32).pow(CONFIG.otp.size);
+        let n = n % (10_u32).pow(CONFIG.otp.size);
 
         Ok(Self(n.to_string()))
     }
 
     pub fn parse(otp: &str) -> Result<Self, InvalidOtpError> {
-        let otp_size: usize = usize::try_from(CONFIG.otp.size).unwrap_or_default();
+        let otp_size: usize =
+            usize::try_from(CONFIG.otp.size).or(Err(InvalidOtpError(otp.into())))?;
 
-        match otp.len() == otp_size {
-            true => match otp.parse() {
-                Ok(v) => Ok(Self(v)),
-                Err(_) => Err(InvalidOtpError(otp.into())),
-            },
-            false => Err(InvalidOtpError(otp.into())),
+        if otp.len() != otp_size {
+            return Err(InvalidOtpError(otp.into()));
         }
+
+        Ok(Otp(otp.parse().or(Err(InvalidOtpError(otp.into())))?))
     }
 }
 

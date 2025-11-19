@@ -10,10 +10,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         .connect(&CONFIG.db.uri)
         .await?;
 
-    let state = ApiState { db };
+    let redis_url = format!("redis://:{}@localhost:6379", CONFIG.redis.password);
+    let redis_client = redis::Client::open(redis_url)?;
+
+    let state = ApiState {
+        db,
+        redis: redis_client,
+    };
 
     println!("Starting server on port: {}", CONFIG.port);
-    axum::serve(listener, newsletter::api::routes().with_state(state)).await?;
+    axum::serve(listener, newsletter::api::routes(&state).with_state(state)).await?;
 
     Ok(())
 }

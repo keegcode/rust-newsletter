@@ -1,9 +1,10 @@
 use regex::Regex;
 use serde::Deserialize;
+use serde::Serialize;
 use std::error;
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Email(pub String);
 
 impl Email {
